@@ -121,6 +121,7 @@ export const getImageFromClient = async (req: Request, res: Response) => {
     if (hashValue != hash_value) {
       console.error('ERROR: Image integrity check failed. Image may be tampered with.');
       res.status(500).send('Image integrity check failed. Image may be tampered with');
+      return
     }
 
     // Send the decrypted image as the response
@@ -128,6 +129,67 @@ export const getImageFromClient = async (req: Request, res: Response) => {
     res.status(200).send(decryptedImage);
   } catch (error) {
     console.error(error);
+    console.log("Error: " + error)
     res.status(500).send('Error viewing and decrypting image');
+  }
+}
+
+export const addUsersToSharedListFromClient  = async (req: Request, res: Response) => {
+  const username = req.user.username
+  const { image_id, shared_users } = req.body;
+  const auth = req.headers['authorization']; 
+  const addSharedUserUrl = `http://localhost:3000/img/add-shared-users`;
+  try{
+    const shareQuery = 'SELECT id, encrypted_symmetric_key FROM shared_users WHERE image_id = $1 AND user_id = $2';
+    const shareResult = await pool.query(shareQuery, [image_id, username]);
+    console.log("User Id is : ", username);
+    if (shareResult.rows.length == 0) {
+      res.status(500).send('Error Adding Users to Shared List');
+      return
+    }
+
+    const {encrypted_symmetric_key} = shareResult.rows[0]
+
+    const rootPath = path.join(__dirname, '../../'); // Move up two directories to reach the root directory
+    const folderPath = path.join(rootPath, 'test_users');
+    const keyPairsJSON = fs.readFileSync(path.join(folderPath, 'userKeyPairs.json'), 'utf-8');
+    const parsedKeyPairs: any = JSON.parse(keyPairsJSON);
+    let private_key = Buffer.from(parsedKeyPairs[username].privateKey, 'utf-8'); 
+    
+    const symmetricKey = crypto.privateDecrypt(private_key, Buffer.from(encrypted_symmetric_key, 'base64'));
+    const sharedUsers = [];
+
+    for (const sharedUser of shared_users) {
+      // Check if the sharedWithUsername exists in the users table
+      const userQuery = 'SELECT username, public_key FROM users WHERE username = $1';
+      const userResult = await pool.query(userQuery, [sharedUser]);
+
+      if (userResult.rows.length === 1) {
+        const sharedWithUserId = userResult.rows[0].username;
+        const publicKey = Buffer.from(userResult.rows[0].public_key, 'utf-8'); 
+
+        // Encrypt the symmetric key with the user's public key
+        const encryptedSymmetricKey = crypto.publicEncrypt(publicKey, symmetricKey);
+
+        sharedUsers.push({
+          username: sharedWithUserId,
+          encrypted_symmetric_key: encryptedSymmetricKey.toString('base64'),
+        });
+
+      }
+    }
+
+    const headers = {
+      "Content-Type": "application/json",
+      "Accept": "application/json, application/xml",
+      "Authorization": auth
+    };
+    const uploadResp = await axios.post(addSharedUserUrl, {image_id: image_id, shared_users: sharedUsers}, {headers});
+    res.status(201).send({msg: 'Users added successfully', data: JSON.stringify(uploadResp.data)});
+
+  } catch (error) {
+    console.error(error);
+    console.log(error)
+    res.status(500).send('Error Adding Users to Shared List 34');
   }
 }

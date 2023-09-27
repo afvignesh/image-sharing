@@ -1,3 +1,5 @@
+CREATE Database imageservice; ---remove this after first time docker up
+
 \c imageservice;
 
 CREATE TABLE users (
@@ -17,7 +19,8 @@ encrypted_symmetric_key TEXT NOT NULL -- Text field for storing the encrypted sy
 CREATE TABLE images (
 image_id VARCHAR(255) PRIMARY KEY,
 encrypted_image TEXT NOT NULL, -- Text field for storing the base64-encoded encrypted image
-hash_value VARCHAR(255)
+hash_value VARCHAR(255),
+owner_id VARCHAR(255) NOT NULL  -- Foreign key to associate with the user who owns the image
 );
 
 CREATE INDEX shared_users_image_user_idx ON shared_users (image_id, user_id);

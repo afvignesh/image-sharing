@@ -4,12 +4,13 @@ import { pool } from '../db';
 
 export const uploadImage = async (req: Request, res: Response) => {
     const { encryptedImage, sharedUsers, hash_value } = req.body; // Assuming you send these details from your upload API
+    const username = req.user.username
 
     try {
       let imageId = uuidv4().toString();
       // Insert the encrypted image and shared users into the database
-      const imageQuery = 'INSERT INTO images (image_id, encrypted_image, hash_value) VALUES ($1, $2, $3)';
-      await pool.query(imageQuery, [imageId, encryptedImage, hash_value]);
+      const imageQuery = 'INSERT INTO images (image_id, encrypted_image, hash_value, owner_id) VALUES ($1, $2, $3, $4)';
+      await pool.query(imageQuery, [imageId, encryptedImage, hash_value, username]);
   
       // Insert the shared users into a shared_users table
       for (const sharedUser of sharedUsers) {
@@ -24,6 +25,32 @@ export const uploadImage = async (req: Request, res: Response) => {
       res.status(500).send('Error storing data');
     }
 };
+
+export const addUsersToSharedList = async(req: Request, res: Response) => {
+  const username = req.user.username
+  const { image_id, shared_users } = req.body;
+  try{
+    const imageQuery = 'SELECT owner_id FROM images WHERE image_id = $1';
+    const imageResult = await pool.query(imageQuery, [image_id]);
+
+    if (imageResult.rows.length == 0 || imageResult.rows[0].owner_id != username) {
+      res.status(401).send('User is not the owner of this image');
+      return
+    }
+
+    for (const sharedUser of shared_users) {
+      const { username, encrypted_symmetric_key } = sharedUser;
+      const sharedUsersQuery = 'INSERT INTO shared_users (image_id, user_id, encrypted_symmetric_key) VALUES ($1, $2, $3)';
+      await pool.query(sharedUsersQuery, [image_id, username, encrypted_symmetric_key]);
+    }
+
+    res.status(201).send({msg: 'Image and shared users data stored successfully', imageId: image_id});
+  } catch (error) {
+    console.error(error);
+    console.log(error)
+    res.status(500).send('Error Adding Users to Shared List 1');
+  }
+}
 
 
 export const getImage = async (req: Request, res: Response) => {

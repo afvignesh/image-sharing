@@ -4,7 +4,7 @@
 
 ```
 curl -X POST http://localhost:3000/auth/register   -H "Content-Type: application/json"   -d '{
-    "username": "testuser",
+    "username": "testuser1",
     "password": "test"
 }'
 ```
@@ -13,7 +13,7 @@ curl -X POST http://localhost:3000/auth/register   -H "Content-Type: application
 
 ```
 curl -X POST http://localhost:3000/auth/login   -H "Content-Type: application/json"   -d '{
-"username": "testuser",
+"username": "testuser1",
 "password": "test"
 }'
 ```
@@ -21,8 +21,8 @@ curl -X POST http://localhost:3000/auth/login   -H "Content-Type: application/js
 ## 3. Upload Image  
 
 ```
-curl -X POST http://localhost:3000/img/upload-from-client -H "Content-Type: application/json" -H "Authorization: Bearer __your_token_here__" -d '{
-    "sharedWithUsernames": ["testuser1", "testuser2]
+curl -X POST http://localhost:3000/img/upload-from-client -H "Content-Type: application/json" -H "Authorization: Bearer __your_auth_token_here__" -d '{
+    "sharedWithUsernames": ["testuser2"],
     "imagePath": "/usr/src/app/test_img/test1.png"
 }'
 ```
@@ -30,9 +30,18 @@ curl -X POST http://localhost:3000/img/upload-from-client -H "Content-Type: appl
 ## 4. View Image  
 
 ```
-curl --location --request GET 'http://localhost:3000/img/get-from-client/2ae4077c-3cd3-488e-bee4-2fc69ba1e151' \
+curl --location --request GET 'http://localhost:3000/img/get-from-client/:image_Id' \
 --header 'Authorization: Bearer __your_token_here__' \
 --header 'Content-Type: application/json' \
 --data '{}'
+```
+
+## 4. Add More Users to Share List
+
+```
+curl -X POST http://localhost:3000/img/add-shared-users-client -H "Content-Type: application/json" -H "Authorization: Bearer __your_auth_token_here__" -d '{
+    "shared_users": ["testuser1"],
+    "image_id": "ff129173-5e5a-46da-b2ee-aee76d14ee86"
+}'
 ```
 
